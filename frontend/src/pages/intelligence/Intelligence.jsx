@@ -61,9 +61,9 @@ function ImageAnalysis() {
 }
 
 function Duplicates() {
-  const { incidents, canOperate, update } = useApp();
+  const { incidents, canOperate, user, update } = useApp();
   const [serverPairs, setServerPairs] = useState([]);
-  useEffect(() => { getDuplicateSuggestions().then(setServerPairs).catch(() => setServerPairs([])); }, [incidents]);
+  useEffect(() => { if (!user || !canOperate) { setServerPairs([]); return; } getDuplicateSuggestions().then(setServerPairs).catch(() => setServerPairs([])); }, [incidents, user, canOperate]);
   const pairs = useMemo(() => {
     const seen = new Set(), out = [];
     incidents.filter((i) => i.status !== 'Resolved').forEach((i) => findRelated(i, incidents).forEach((r) => { const k = [i.id, r.id].sort().join(); if (!seen.has(k)) { seen.add(k); out.push({ a: i, ...r }); } }));

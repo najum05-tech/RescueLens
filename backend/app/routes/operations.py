@@ -2,14 +2,13 @@ from datetime import datetime, timedelta, timezone
 from math import asin, cos, radians, sin, sqrt
 from uuid import uuid4
 
-import httpx
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from ..config import settings
 from ..database import get_db
 from ..models import Assignment, DuplicateSuggestion, Incident, Notification, Report, SafetyGuidance, Team, User
+from ..services.ai_service import ai_service
 from ..services.notifications import notify_roles, notify_user
 from ..utils.permissions import current_user, require_admin, require_operator, optional_user
 
@@ -47,26 +46,16 @@ def haversine(a_lat, a_lng, b_lat, b_lng):
     return 6371 * 2 * asin(sqrt(value))
 
 
-async def embed_text(text: str):
-    if not settings.gemini_api_key:
-        return None, None
-    model = "models/text-embedding-004"
-    url = f"https://generativelanguage.googleapis.com/v1beta/{model}:embedContent"
-    try:
-        async with httpx.AsyncClient(timeout=12) as client:
-            response = await client.post(url, params={"key": settings.gemini_api_key}, json={"model": model, "content": {"parts": [{"text": text}]}})
-            response.raise_for_status()
-            return response.json().get("embedding", {}).get("values"), model
-    except (httpx.HTTPError, ValueError, TypeError):
-        return None, None
-
-
 def cosine(a, b):
     if not a or not b or len(a) != len(b):
         return None
     dot = sum(x * y for x, y in zip(a, b))
     den = sqrt(sum(x * x for x in a) * sum(y * y for y in b))
     return dot / den if den else None
+
+
+async def embed_text(text: str):
+    return await ai_service.embed_text(text)
 
 
 async def create_duplicate_suggestions(db: Session, report: Report, incident: Incident):

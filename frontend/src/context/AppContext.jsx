@@ -32,6 +32,12 @@ export function AppProvider({ children }) {
     getTeams().then((rows) => setTeams(rows)).catch(() => {});
   }, [setIncidents, setTeams]);
 
+  useEffect(() => {
+    const clearAuth = () => { setAccessToken(null); setUser(null); setRole('citizen'); };
+    window.addEventListener('rl-auth-cleared', clearAuth);
+    return () => window.removeEventListener('rl-auth-cleared', clearAuth);
+  }, [setAccessToken, setUser, setRole]);
+
   const login = useCallback(async (email, password) => {
     const result = await api('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
     setAccessToken(result.access_token); setUser(result.user); setRole(result.user.role); return result.user;

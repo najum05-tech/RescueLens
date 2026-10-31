@@ -3,12 +3,27 @@ const API_BASE = (import.meta.env.VITE_API_URL || `http://${browserHost}:8000/ap
 
 export const getToken = () => localStorage.getItem('rl.access_token');
 
+const PUBLIC_ENDPOINTS = ['/incidents', '/reports', '/teams', '/analytics', '/guidance'];
+const canRetryAnonymously = (path) => {
+  const endpoint = path.split('?')[0];
+  return PUBLIC_ENDPOINTS.includes(endpoint);
+};
+
 export async function api(path, options = {}) {
   const headers = new Headers(options.headers || {});
   if (options.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
   const token = getToken();
   if (token) headers.set('Authorization', `Bearer ${token}`);
-  const response = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  let response = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  if (response.status === 401 && token) {
+    localStorage.removeItem('rl.access_token');
+    localStorage.removeItem('rl.user');
+    window.dispatchEvent(new Event('rl-auth-cleared'));
+    if (canRetryAnonymously(path)) {
+      headers.delete('Authorization');
+      response = await fetch(`${API_BASE}${path}`, { ...options, headers });
+    }
+  }
   if (response.status === 204) return null;
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(payload.detail || payload.message || `Request failed (${response.status})`);

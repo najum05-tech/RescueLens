@@ -7,8 +7,13 @@ class Settings(BaseSettings):
     secret_key: str = "dev-only-change-me"
     access_token_minutes: int = 480
     cors_origins: str = "http://localhost:5173"
-    gemini_api_key: str = ""
-    gemini_model: str = "gemini-2.0-flash"
+    ai_provider: str = "huggingface"
+    huggingface_api_key: str = ""
+    huggingface_base_url: str = "https://api-inference.huggingface.co"
+    hf_text_model: str = "mistralai/Mistral-7B-Instruct-v0.3"
+    hf_embedding_model: str = "ibm-granite/granite-embedding-97m-multilingual-r2"
+    hf_image_model: str = "moondream/moondream-2b-2025-04-14-4bit"
+    hf_request_timeout: int = 30
     upload_dir: str = "uploads"
     max_image_mb: int = 8
     max_video_mb: int = 50

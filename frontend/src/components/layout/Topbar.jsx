@@ -17,14 +17,17 @@ function Menu_({ open, children, align = 'right' }) {
 }
 
 export default function Topbar({ onMenu }) {
-  const { role, setRole, user, logout, activity, unread, markSeen } = useApp();
+  const { role, setRole, user, accessToken, logout, activity, unread, markSeen } = useApp();
   const [notifications, setNotifications] = useState([]);
   const nav = useNavigate();
   const [q, setQ] = useState('');
   const [open, setOpen] = useState(null);
   const ref = useRef(null);
   const loadNotifications = () => getNotifications().then(setNotifications).catch(() => setNotifications([]));
-  useEffect(() => { loadNotifications(); const timer = setInterval(loadNotifications, 30000); return () => clearInterval(timer); }, []);
+  useEffect(() => {
+    if (!user || !accessToken) { setNotifications([]); return undefined; }
+    loadNotifications(); const timer = setInterval(loadNotifications, 30000); return () => clearInterval(timer);
+  }, [user, accessToken]);
   useEffect(() => {
     const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(null); };
     document.addEventListener('mousedown', h); return () => document.removeEventListener('mousedown', h);
