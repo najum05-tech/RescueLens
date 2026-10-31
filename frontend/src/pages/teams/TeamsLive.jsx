@@ -1,0 +1,24 @@
+import { useEffect, useState } from 'react';
+import { CheckCircle2, LifeBuoy, Plus, Timer, UserPlus, WifiOff } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { useApp } from '../../context/AppContext';
+import { getTeams, api } from '../../services/api';
+import { PageHeader, StatusBadge } from '../../components/common/ui';
+import AssignModal from '../../components/teams/AssignModal';
+
+const empty = { name: '', specialization: 'General Rescue', description: '', members: 0, contact: '' };
+export default function TeamsLive() {
+  const { role } = useApp(); const [teams, setTeams] = useState([]); const [form, setForm] = useState(empty); const [show, setShow] = useState(false); const [assign, setAssign] = useState(null); const [state, setState] = useState('loading');
+  const load = () => { setState('loading'); getTeams().then((x) => { setTeams(x); setState('ready'); }).catch(() => setState('error')); };
+  useEffect(load, []);
+  const save = async (event) => { event.preventDefault(); try { await api('/teams', { method: 'POST', body: JSON.stringify(form) }); toast.success('Team created'); setForm(empty); setShow(false); load(); } catch (e) { toast.error(e.message); } };
+  const availability = async (team, value) => { try { await api(`/teams/${team.id}`, { method: 'PATCH', body: JSON.stringify({ availability: value }) }); setTeams((rows) => rows.map((x) => x.id === team.id ? { ...x, availability: value } : x)); toast.success(`${team.name} is now ${value}`); } catch (e) { toast.error(e.message); } };
+  return <div><PageHeader title="Rescue Teams" desc="Persistent coordination records. This simulation does not contact real rescue organizations."><button className="btn-primary" onClick={() => setShow(!show)} disabled={role !== 'admin'}><Plus size={15} />New team</button></PageHeader>
+    {show && <form className="card mb-5 grid gap-3 p-4 sm:grid-cols-2" onSubmit={save}><input className="input" placeholder="Team name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /><select className="input" value={form.specialization} onChange={(e) => setForm({ ...form, specialization: e.target.value })}>{['Medical', 'Fire', 'Flood', 'General Rescue'].map((x) => <option key={x}>{x}</option>)}</select><input className="input" placeholder="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /><input className="input" placeholder="Contact" value={form.contact} onChange={(e) => setForm({ ...form, contact: e.target.value })} /><button className="btn-primary sm:col-span-2">Create team</button></form>}
+    <div className="mb-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><Stat icon={LifeBuoy} label="Total teams" value={teams.length} /><Stat icon={CheckCircle2} label="Available" value={teams.filter((x) => x.availability === 'Available').length} /><Stat icon={Timer} label="Busy" value={teams.filter((x) => x.availability === 'Busy').length} /><Stat icon={WifiOff} label="Unavailable" value={teams.filter((x) => x.availability === 'Unavailable').length} /></div>
+    {state === 'loading' && <p className="text-neutral">Loading teams…</p>}{state === 'error' && <p className="text-critical">Teams could not be loaded.</p>}{state === 'ready' && !teams.length && <div className="card p-6 text-center text-neutral">No active teams are registered.</div>}
+    {!!teams.length && <div className="card overflow-x-auto"><table className="w-full min-w-[720px] text-left"><thead><tr className="border-b border-line">{['Team name', 'Specialization', 'Contact', 'Availability', 'Actions'].map((h) => <th className="th" key={h}>{h}</th>)}</tr></thead><tbody>{teams.map((team) => <tr className="border-b border-line/70 last:border-0" key={team.id}><td className="td font-medium text-navy">{team.name}<p className="text-xs font-normal text-neutral">{team.description || 'No description'}</p></td><td className="td">{team.specialization}</td><td className="td">{team.contact || '—'}</td><td className="td"><StatusBadge status={team.availability} /></td><td className="td"><div className="flex items-center gap-2"><select className="input !w-auto !py-1" value={team.availability} onChange={(e) => availability(team, e.target.value)}><option>Available</option><option>Busy</option><option>Unavailable</option></select><button className="btn-outline !py-1" disabled={team.availability !== 'Available'} onClick={() => setAssign(team.id)} title="Create a persisted simulated assignment"><UserPlus size={13} />Assign</button></div></td></tr>)}</tbody></table></div>}
+    <AssignModal open={assign !== null} onClose={() => setAssign(null)} teamId={assign} />
+  </div>;
+}
+function Stat({ icon: Icon, label, value }) { return <section className="card p-4"><div className="flex justify-between text-neutral">{label}<Icon size={16} /></div><p className="mt-2 text-2xl font-semibold text-navy">{value}</p></section>; }
